@@ -14,14 +14,24 @@ namespace :foreman_systemd do
           set :foreman_systemd_log, -> { shared_path.join('log') }
           set :foreman_systemd_port, 3000 # default is not set
           set :foreman_systemd_user, 'www-data' # default is not set
+          set :foreman_systemd_cap_user, nil # defaults to 'root'
+          set :foreman_systemd_run_as, '--user' # default is not set
     DESC
+
+  def as_if(who, &_block)
+    if who
+      as who, &_block
+    else
+      yield
+    end
+  end
 
   task :setup do
     invoke :'foreman_systemd:export'
 
     on roles fetch(:foreman_systemd_roles) do
-      as "root" do
-        execute :systemctl, "daemon-reload"
+      as_if fetch(:foreman_systemd_cap_user) do
+        execute :systemctl, "#{fetch(:foreman_systemd_run_as)} daemon-reload"
       end
     end
 
@@ -32,8 +42,8 @@ namespace :foreman_systemd do
   desc 'Enables service in systemd'
   task :enable do
     on roles fetch(:foreman_systemd_roles) do
-      as "root" do
-        execute :systemctl, "enable #{fetch(:foreman_systemd_app)}.target"
+      as_if fetch(:foreman_systemd_cap_user) do
+        execute :systemctl, "#{fetch(:foreman_systemd_run_as)} enable #{fetch(:foreman_systemd_app)}.target"
       end
     end
   end
@@ -41,8 +51,8 @@ namespace :foreman_systemd do
   desc 'Disables service in systemd'
   task :disable do
     on roles fetch(:foreman_systemd_roles) do
-      as "root" do
-        execute :systemctl, "disable #{fetch(:foreman_systemd_app)}.target"
+      as_if fetch(:foreman_systemd_cap_user) do
+        execute :systemctl, "#{fetch(:foreman_systemd_run_as)} disable #{fetch(:foreman_systemd_app)}.target"
       end
     end
   end
@@ -63,7 +73,7 @@ namespace :foreman_systemd do
         options[:port] = fetch(:foreman_systemd_port) if fetch(:foreman_systemd_port)
         options[:user] = fetch(:foreman_systemd_user) if fetch(:foreman_systemd_user)
 
-        as "root" do
+        as_if fetch(:foreman_systemd_cap_user) do
           execute :foreman, 'export', fetch(:foreman_systemd_export_format), fetch(:foreman_systemd_export_path),
             options.map{ |k, v| "--#{k}='#{v}'" }, fetch(:foreman_systemd_flags)
         end
@@ -74,8 +84,8 @@ namespace :foreman_systemd do
   desc 'Start the application services'
   task :start do
     on roles fetch(:foreman_systemd_roles) do
-      as "root" do
-        execute :systemctl, "start #{fetch(:foreman_systemd_app)}.target"
+      as_if fetch(:foreman_systemd_cap_user) do
+        execute :systemctl, "#{fetch(:foreman_systemd_run_as)} start #{fetch(:foreman_systemd_app)}.target"
       end
     end
   end
@@ -83,8 +93,8 @@ namespace :foreman_systemd do
   desc 'Stop the application services'
   task :stop do
     on roles fetch(:foreman_systemd_roles) do
-      as "root" do
-        execute :systemctl, "stop #{fetch(:foreman_systemd_app)}.target"
+      as_if fetch(:foreman_systemd_cap_user) do
+        execute :systemctl, "#{fetch(:foreman_systemd_run_as)} stop #{fetch(:foreman_systemd_app)}.target"
       end
     end
   end
@@ -92,8 +102,8 @@ namespace :foreman_systemd do
   desc 'Restart the application services'
   task :restart do
     on roles fetch(:foreman_systemd_roles) do
-      as "root" do
-        execute :systemctl, "restart #{fetch(:foreman_systemd_app)}.target"
+      as_if fetch(:foreman_systemd_cap_user) do
+        execute :systemctl, "#{fetch(:foreman_systemd_run_as)} restart #{fetch(:foreman_systemd_app)}.target"
       end
     end
   end
@@ -108,5 +118,6 @@ namespace :load do
     set :foreman_systemd_flags, ''
     set :foreman_systemd_app, -> { fetch(:application) }
     set :foreman_systemd_log, -> { shared_path.join('log') }
+    set :foreman_systemd_cap_user, 'root'
   end
 end
