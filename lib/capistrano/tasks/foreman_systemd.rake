@@ -26,17 +26,21 @@ namespace :foreman_systemd do
     end
   end
 
+  desc 'Setup service in systemd'
   task :setup do
     invoke :'foreman_systemd:export'
+    invoke :'foreman_systemd:reload'
+    invoke :'foreman_systemd:enable'
+    invoke :'foreman_systemd:start'
+  end
 
+  desc 'Reload services configuration in systemd'
+  task :reload do
     on roles fetch(:foreman_systemd_roles) do
       as_if fetch(:foreman_systemd_cap_user) do
         execute :systemctl, "#{fetch(:foreman_systemd_run_as)} daemon-reload"
       end
     end
-
-    invoke :'foreman_systemd:enable'
-    invoke :'foreman_systemd:start'
   end
 
   desc 'Enables service in systemd'
@@ -56,7 +60,6 @@ namespace :foreman_systemd do
       end
     end
   end
-
 
   desc 'Export the Procfile to another process management format'
   task :export do
@@ -107,7 +110,6 @@ namespace :foreman_systemd do
       end
     end
   end
-
 end
 
 namespace :load do
